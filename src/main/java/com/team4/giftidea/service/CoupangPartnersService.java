@@ -40,7 +40,7 @@ public class CoupangPartnersService {
 	}
 
 	/**
-	 * DB에서 모든 쿠팡 상품을 조회하고, 파트너스 링크로 업데이트
+	 * DB에서 모든 쿠팡 상품을 조회하고, 파트너스 링크로 업데이트 (배치+대기 적용)
 	 */
 	@Transactional
 	public int updateAllCoupangProductLinks() {
@@ -49,21 +49,45 @@ public class CoupangPartnersService {
 		List<Product> coupangProducts = productRepository.findByMallName("Coupang");
 		log.info("📦 총 {}개의 쿠팡 상품을 찾음", coupangProducts.size());
 
-		int updatedCount = 0;
-		for (Product product : coupangProducts) {
-			String originalUrl = product.getLink();
-			log.info("🔗 상품 ID {}의 기존 URL: {}", product.getProductId(), originalUrl);
+		// 한 번에 처리할 상품 수 (필요에 따라 조정)
+		final int BATCH_SIZE = 50;
+		// 각 배치 처리 후 대기 시간 (밀리초) (필요에 따라 조정)
+		final long SLEEP_MS = 60000L;
 
-			String partnerLink = generatePartnerLink(originalUrl);
-			if (partnerLink != null) {
-				log.info("✅ 상품 ID {}의 변환된 파트너스 링크: {}", product.getProductId(), partnerLink);
-				product.setLink(partnerLink);
-				productRepository.save(product);
-				updatedCount++;
-			} else {
-				log.warn("⚠️ 파트너스 링크 생성 실패 (상품 ID: {})", product.getProductId());
+		int updatedCount = 0;
+
+		// 배치(Chunk) 단위로 상품을 나눠 처리
+		for (int i = 0; i < coupangProducts.size(); i += BATCH_SIZE) {
+			List<Product> batch = coupangProducts.subList(i, Math.min(i + BATCH_SIZE, coupangProducts.size()));
+			log.info("🔸 Batch 처리: index {} ~ {} (총 {}개)", i, i + batch.size() - 1, batch.size());
+
+			for (Product product : batch) {
+				String originalUrl = product.getLink();
+				log.info("🔗 상품 ID {}의 기존 URL: {}", product.getProductId(), originalUrl);
+
+				String partnerLink = generatePartnerLink(originalUrl);
+				if (partnerLink != null) {
+					log.info("✅ 상품 ID {}의 변환된 파트너스 링크: {}", product.getProductId(), partnerLink);
+					product.setLink(partnerLink);
+					productRepository.save(product);
+					updatedCount++;
+				} else {
+					log.warn("⚠️ 파트너스 링크 생성 실패 (상품 ID: {})", product.getProductId());
+				}
+			}
+
+			// 한 배치를 끝냈으므로 일정 시간 대기 (과도 호출 방지)
+			if (i + BATCH_SIZE < coupangProducts.size()) {
+				log.info("🔸 Batch 처리 완료: {}개 상품 업데이트, 다음 배치 전 {}ms 대기", batch.size(), SLEEP_MS);
+				try {
+					Thread.sleep(SLEEP_MS);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					log.warn("스레드 대기 중 인터럽트 발생: {}", e.getMessage());
+				}
 			}
 		}
+
 		log.info("🎯 [END] 총 {}개의 쿠팡 상품이 업데이트됨", updatedCount);
 		return updatedCount;
 	}
@@ -73,7 +97,6 @@ public class CoupangPartnersService {
 	 */
 	private String generatePartnerLink(String originalUrl) {
 		try {
-			// 엔드포인트 URI (baseUrl과 결합)
 			String endpoint = "/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink";
 			String apiUrl = baseUrl + endpoint;
 			log.info("📡 쿠팡 파트너스 API 호출: {}", apiUrl);
@@ -89,7 +112,6 @@ public class CoupangPartnersService {
 			headers.set("X-Request-Id", requestId);
 			log.info("🆔 X-Request-Id: {}", requestId);
 
-			// 요청 바디 구성 (문서 예시에 맞게 coupangUrls와 subId 포함)
 			Map<String, Object> requestBody = new HashMap<>();
 			requestBody.put("coupangUrls", Collections.singletonList(originalUrl));
 			requestBody.put("subId", partnerId);
@@ -137,17 +159,14 @@ public class CoupangPartnersService {
 	 * "CEA algorithm=HmacSHA256, access-key=ACCESS_KEY, signed-date=SIGNED_DATE, signature=SIGNATURE"
 	 */
 	private String generateAuthorizationHeader(String method, String uri) {
-		// GMT 기준 날짜/시간 생성 (형식: yyMMdd'T'HHmmss'Z')
 		SimpleDateFormat dateFormatGmt = new SimpleDateFormat("yyMMdd'T'HHmmss'Z'");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 		String signedDate = dateFormatGmt.format(new Date());
 
-		// uri에서 path와 query 분리 (query가 없는 경우 빈 문자열 사용)
 		String[] parts = uri.split("\\?", 2);
 		String path = parts[0];
 		String query = (parts.length == 2) ? parts[1] : "";
 
-		// 메시지 생성
 		String message = signedDate + method + path + query;
 		log.debug("🔐 서명할 메시지: {}", message);
 
@@ -163,7 +182,6 @@ public class CoupangPartnersService {
 			throw new RuntimeException("HMAC 서명 생성 오류: " + e.getMessage(), e);
 		}
 
-		// 최종 Authorization 헤더 생성
 		return String.format("CEA algorithm=%s, access-key=%s, signed-date=%s, signature=%s",
 			"HmacSHA256", accessKey, signedDate, signature);
 	}
