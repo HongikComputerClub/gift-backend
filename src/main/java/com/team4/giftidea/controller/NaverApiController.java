@@ -1,14 +1,16 @@
 package com.team4.giftidea.controller;
 
+import com.team4.giftidea.dto.ItemDTO;
+import com.team4.giftidea.service.NaverApiService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.team4.giftidea.service.NaverApiService;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/naver") // 기본 경로 설정
+@RequestMapping("/api/naver")
 public class NaverApiController {
 
 	private final NaverApiService naverApiService;
@@ -18,7 +20,7 @@ public class NaverApiController {
 	}
 
 	@GetMapping("/search")
-	public String search(@RequestParam String query) {
+	public List<ItemDTO> search(@RequestParam String query) {
 		return naverApiService.searchItems(query);
 	}
 }
