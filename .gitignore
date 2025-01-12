@@ -1,3 +1,6 @@
+# 로컬 .env 파일을 무시
+.env
+
 # Compiled class files
 *.class
 
