@@ -1,10 +1,10 @@
 # 로컬 .env 파일을 무시
 .env
 
-# Compiled class file
+# Compiled class files
 *.class
 
-# Log file
+# Log files
 *.log
 
 # BlueJ files
@@ -22,7 +22,32 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# IDE 관련 파일들
+.idea/
+*.iml
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Maven과 Gradle의 빌드 디렉토리
+/target/
+/build/
+
+# 특정 운영체제 파일
+.DS_Store
+Thumbs.db
+
+# Virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
->>>>>>> 1b0d7b0bf0b6c42ff95d93c8bd3c9cd83617e938
+
+# 환경 변수 파일
+.env
+application.yml
+application-*.yml
+
+# IntelliJ와 Eclipse의 프로젝트 파일
+*.iws
+*.ipr
+*.project
+*.classpath
