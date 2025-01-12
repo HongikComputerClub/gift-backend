@@ -1,4 +1,5 @@
 package com.team4.giftidea.dto;
+
 public class ItemDTO {
 
 	private String title;
