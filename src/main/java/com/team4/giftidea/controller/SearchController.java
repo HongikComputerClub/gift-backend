@@ -3,6 +3,7 @@ package com.team4.giftidea.controller;
 import com.team4.giftidea.dto.ItemDTO;
 import com.team4.giftidea.service.KreamApiService;
 import com.team4.giftidea.service.NaverApiService;
+import com.team4.giftidea.service.CoupangApiService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,27 +21,25 @@ import java.util.stream.Collectors;
 public class SearchController {
 	private final KreamApiService kreamApiService;
 	private final NaverApiService naverApiService;
-	private final ExecutorService executorService = Executors.newFixedThreadPool(2);
+	private final CoupangApiService coupangApiService;
+	private final ExecutorService executorService = Executors.newFixedThreadPool(3);
 
-	public SearchController(KreamApiService kreamApiService, NaverApiService naverApiService) {
+	public SearchController(KreamApiService kreamApiService, NaverApiService naverApiService, CoupangApiService coupangApiService) {
 		this.kreamApiService = kreamApiService;
 		this.naverApiService = naverApiService;
+		this.coupangApiService = coupangApiService;
 	}
 
 	@GetMapping
 	public List<ItemDTO> search(@RequestParam("query") String query) {
-		CompletableFuture<List<ItemDTO>> naverFuture = CompletableFuture.supplyAsync(() ->
-			naverApiService.searchItems(List.of(query)), executorService);
+		CompletableFuture<List<ItemDTO>> coupangFuture = CompletableFuture.supplyAsync(() ->
+			coupangApiService.searchItems(query), executorService);
 
-		CompletableFuture<List<ItemDTO>> kreamFuture = CompletableFuture.supplyAsync(() ->
-			kreamApiService.searchItems(query), executorService);
-
-		CompletableFuture.allOf(naverFuture, kreamFuture).join();
+		CompletableFuture.allOf(coupangFuture).join();
 
 		List<ItemDTO> combinedResults = new ArrayList<>();
 		try {
-			combinedResults.addAll(naverFuture.get());
-			combinedResults.addAll(kreamFuture.get());
+			combinedResults.addAll(coupangFuture.get());
 		} catch (Exception e) {
 			throw new RuntimeException("Error merging search results: " + e.getMessage());
 		}
