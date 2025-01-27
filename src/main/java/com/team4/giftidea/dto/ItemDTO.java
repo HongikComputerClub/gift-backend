@@ -13,6 +13,7 @@ public class ItemDTO {
 	private String productId;
 	private String brand;
 	private String category;
+	private int weight;
 
 	public void setTitle(String title) { this.title = title; }
 
@@ -29,4 +30,17 @@ public class ItemDTO {
 	public void setBrand(String brand) { this.brand = brand; }
 
 	public void setCategory(String category) { this.category = category; }
+
+	public void setWeight(int weight) {
+		this.weight = weight;
+	}
+
+	public void applyWeight() {
+		if ("KREAM".equalsIgnoreCase(mallName)) {
+			weight += 50;
+			if ("한정판".equalsIgnoreCase(category)) {
+				weight += 100;
+			}
+		}
+	}
 }
