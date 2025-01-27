@@ -1,19 +1,19 @@
 package com.team4.giftidea.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
+import com.team4.giftidea.dto.ItemDTO;
+import com.team4.giftidea.service.KreamApiService;
+import com.team4.giftidea.service.NaverApiService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.team4.giftidea.dto.ItemDTO;
-import com.team4.giftidea.service.KreamApiService;
-import com.team4.giftidea.service.NaverApiService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/search")
@@ -29,9 +29,6 @@ public class SearchController {
 
 	@GetMapping
 	public List<ItemDTO> search(@RequestParam("query") String query) {
-		List<ItemDTO> result = new ArrayList<>();
-
-		// 두 개의 API 병렬 호출
 		CompletableFuture<List<ItemDTO>> naverFuture = CompletableFuture.supplyAsync(() ->
 			naverApiService.searchItems(List.of(query)), executorService);
 
@@ -40,13 +37,16 @@ public class SearchController {
 
 		CompletableFuture.allOf(naverFuture, kreamFuture).join();
 
+		List<ItemDTO> combinedResults = new ArrayList<>();
 		try {
-			result.addAll(naverFuture.get());
-			result.addAll(kreamFuture.get());
+			combinedResults.addAll(naverFuture.get());
+			combinedResults.addAll(kreamFuture.get());
 		} catch (Exception e) {
-			throw new RuntimeException("Error combining search results: " + e.getMessage());
+			throw new RuntimeException("Error merging search results: " + e.getMessage());
 		}
 
-		return result;
+		return combinedResults.stream()
+			.sorted((a, b) -> b.getWeight() - a.getWeight())
+			.collect(Collectors.toList());
 	}
 }
