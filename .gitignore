@@ -1,19 +1,13 @@
-# 로컬 .env 파일을 무시
+# 로컬 환경 변수 파일 무시
 .env
+.env.local
+.env.production
+.env.development
+application.yml
+application-*.yml
 
-# Compiled class files
+# 빌드 산출물 무시
 *.class
-
-# Log files
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -32,22 +26,20 @@
 # Maven과 Gradle의 빌드 디렉토리
 /target/
 /build/
+/out/
+/bin/
 
-# 특정 운영체제 파일
+# 운영체제 관련 파일 무시
 .DS_Store
 Thumbs.db
+.fseventsd
+.Trashes
+.VolumeIcon.icns
+$RECYCLE.BIN/
 
-# Virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# 특정 프로젝트 관련 임시 파일
+.write_access_check_file.temp
+
+# Virtual machine crash logs
 hs_err_pid*
 replay_pid*
-
-# 환경 변수 파일
-.env
-application.yml
-application-*.yml
-
-# IntelliJ와 Eclipse의 프로젝트 파일
-*.iws
-*.ipr
-*.project
-*.classpath
