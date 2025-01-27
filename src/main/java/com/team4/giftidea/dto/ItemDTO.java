@@ -41,6 +41,8 @@ public class ItemDTO {
 			if ("한정판".equalsIgnoreCase(category)) {
 				weight += 100;
 			}
+		} else if ("Coupang".equalsIgnoreCase(mallName)) {
+			weight += 20;
 		}
 	}
 }
