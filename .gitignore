@@ -1,0 +1,46 @@
+# 로컬 환경 변수 파일 무시
+.env
+src/main/resources/application.properties
+.env.local
+.env.production
+.env.development
+application.yml
+application-*.yml
+
+# 빌드 산출물 무시
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IDE 관련 파일들
+.idea/
+*.iml
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Maven과 Gradle의 빌드 디렉토리
+/target/
+/build/
+/out/
+/bin/
+
+# 운영체제 관련 파일 무시
+.DS_Store
+Thumbs.db
+.fseventsd
+.Trashes
+.VolumeIcon.icns
+$RECYCLE.BIN/
+
+# 특정 프로젝트 관련 임시 파일
+.write_access_check_file.temp
+
+# Virtual machine crash logs
+hs_err_pid*
+replay_pid*
