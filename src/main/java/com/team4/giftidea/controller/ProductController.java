@@ -6,12 +6,13 @@ import com.team4.giftidea.service.KreamApiService;
 import com.team4.giftidea.service.NaverApiService;
 import com.team4.giftidea.service.ProductService;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 상품 정보를 크롤링하고 저장하는 컨트롤러
+ */
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
@@ -21,6 +22,14 @@ public class ProductController {
 	private final ProductService productService;
 	private final KreamApiService kreamApiService;
 
+	/**
+	 * ProductController 생성자
+	 *
+	 * @param naverApiService   네이버 API 서비스
+	 * @param coupangApiService 쿠팡 API 서비스
+	 * @param kreamApiService   Kream API 서비스
+	 * @param productService    상품 저장 서비스
+	 */
 	public ProductController(
 		NaverApiService naverApiService,
 		CoupangApiService coupangApiService,
@@ -32,6 +41,9 @@ public class ProductController {
 		this.productService = productService;
 	}
 
+	/**
+	 * 상품 정보를 크롤링하고 데이터베이스에 저장하는 엔드포인트
+	 */
 	@GetMapping("/crawl")
 	public void crawlAndStoreData() {
 		// 네이버 키워드 목록
@@ -49,22 +61,25 @@ public class ProductController {
 		// 네이버 크롤링
 		naverKeywords.forEach(keyword -> {
 			List<Product> naverProducts = naverApiService.searchItems(List.of(keyword));
-			productService.saveItems(naverProducts, keyword);  // DB에 저장
+			productService.saveItems(naverProducts, keyword); // DB에 저장
 		});
 
 		// 쿠팡 크롤링
 		coupangKeywords.forEach(keyword -> {
 			List<Product> coupangProducts = coupangApiService.searchItems(keyword);
-			productService.saveItems(coupangProducts, keyword);  // DB에 저장
+			productService.saveItems(coupangProducts, keyword); // DB에 저장
 		});
 
 		// Kream 크롤링
 		kreamKeywords.forEach(keyword -> {
 			List<Product> kreamProducts = kreamApiService.searchItems(keyword);
-			productService.saveItems(kreamProducts, keyword);  // DB에 저장
+			productService.saveItems(kreamProducts, keyword); // DB에 저장
 		});
 	}
 
+	/**
+	 * 매일 20시 12분에 상품 정보를 자동으로 크롤링하는 스케줄러
+	 */
 	@Scheduled(cron = "0 12 20 * * *")
 	public void scheduleCrawl() {
 		crawlAndStoreData();

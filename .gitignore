@@ -6,6 +6,13 @@
 application.yml
 application-*.yml
 
+# 민감한 설정 파일 무시
+*.pem
+*.key
+*.crt
+*.pfx
+*.der
+
 # 빌드 산출물 무시
 *.class
 *.jar
@@ -16,18 +23,25 @@ application-*.yml
 *.tar.gz
 *.rar
 
-# IDE 관련 파일들
+# IDE 및 편집기 관련 파일 무시
 .idea/
 *.iml
 .vscode/
 *.sublime-workspace
 *.sublime-project
 
-# Maven과 Gradle의 빌드 디렉토리
+# Gradle 및 Maven 빌드 디렉토리 무시
+/.gradle/
+/.mvn/
 /target/
 /build/
 /out/
 /bin/
+
+# Node.js 관련 파일 (추가적으로 필요할 경우)
+/node_modules/
+/npm-debug.log
+/yarn-error.log
 
 # 운영체제 관련 파일 무시
 .DS_Store
@@ -39,6 +53,7 @@ $RECYCLE.BIN/
 
 # 특정 프로젝트 관련 임시 파일
 .write_access_check_file.temp
+example.txt
 
 # Virtual machine crash logs
 hs_err_pid*
