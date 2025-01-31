@@ -1,11 +1,13 @@
 # 로컬 환경 변수 파일 무시
 .env
-src/main/resources/application.properties
 .env.local
 .env.production
 .env.development
 application.yml
 application-*.yml
+
+# Spring Boot 설정 파일 무시
+src/main/resources/application.properties
 
 # 빌드 산출물 무시
 *.class
