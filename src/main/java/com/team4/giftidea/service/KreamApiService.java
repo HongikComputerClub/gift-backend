@@ -1,5 +1,7 @@
 package com.team4.giftidea.service;
 
+import com.team4.giftidea.entity.Product;
+import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -15,22 +17,31 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.team4.giftidea.entity.Product;
-
+/**
+ * Kream 웹사이트에서 상품 정보를 크롤링하는 서비스 클래스
+ */
 @Service
+@Slf4j
 public class KreamApiService {
+
+	private static final String KREAM_SEARCH_URL = "https://kream.co.kr/search?keyword=%s&tab=products";
+	private static final String USER_AGENT = "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
 
 	@Value("${selenium.chromedriver-path}")
 	private String chromeDriverPath;
 
-	@Autowired
-	private ProductService productService;
+	private final ProductService productService;
 
-	private static final String KREAM_SEARCH_URL = "https://kream.co.kr/search?keyword=%s&tab=products";
+	@Autowired
+	public KreamApiService(ProductService productService) {
+		this.productService = productService;
+	}
 
 	/**
 	 * 주어진 키워드에 대해 Kream에서 상품을 크롤링하여 리스트로 반환합니다.
-	 * @param query 검색어
+	 *
+	 * @param query 검색 키워드
 	 * @return 크롤링된 상품 리스트
 	 */
 	public List<Product> searchItems(String query) {
@@ -38,14 +49,15 @@ public class KreamApiService {
 		System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 
 		ChromeOptions options = new ChromeOptions();
-		options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+		options.addArguments(USER_AGENT);
+
 		WebDriver driver = new ChromeDriver(options);
 
 		try {
 			String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
 			String searchUrl = String.format(KREAM_SEARCH_URL, encodedQuery);
-			driver.get(searchUrl);
 
+			driver.get(searchUrl);
 			WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(60));
 			wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".product_card")));
 
@@ -53,41 +65,53 @@ public class KreamApiService {
 
 			for (WebElement product : products) {
 				try {
-					String title = product.findElement(By.className("name")).getText();
-					String priceText = product.findElement(By.className("amount")).getText().replaceAll("[^0-9]", "");
-					Integer price = priceText.isEmpty() ? 0 : Integer.parseInt(priceText);
-					String imageUrl = product.findElement(By.tagName("img")).getAttribute("src");
-					String link = product.findElement(By.tagName("a")).getAttribute("href");
-
-					// Product 객체에 값 설정
-					Product productEntity = new Product();
-					productEntity.setTitle(title);
-					productEntity.setPrice(price);
-					productEntity.setImage(imageUrl);
-					productEntity.setMallName("Kream");
-					productEntity.setLink(link);
-					productEntity.setKeyword(query);  // 키워드를 상품에 설정
-
-					productList.add(productEntity);
-
-					// 상품을 데이터베이스에 저장
-					productService.saveItems(List.of(productEntity), query);
-
+					Product productEntity = extractProductInfo(product, query);
+					if (productEntity != null) {
+						productList.add(productEntity);
+						productService.saveItems(List.of(productEntity), query);
+					}
 				} catch (NoSuchElementException e) {
-					// 요소가 없을 때 발생하는 예외 처리
-					e.printStackTrace();
+					log.warn("요소를 찾을 수 없음: {}", e.getMessage());
 				}
 			}
-
 		} catch (TimeoutException e) {
-			// 페이지 로딩 타임아웃 예외 처리
-			e.printStackTrace();
+			log.error("페이지 로딩 시간 초과: {}", e.getMessage());
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("크롤링 중 오류 발생: {}", e.getMessage());
 		} finally {
 			driver.quit();  // 크롤링 후 브라우저 종료
 		}
 
 		return productList;
+	}
+
+	/**
+	 * 개별 상품 정보를 추출하여 Product 객체를 생성합니다.
+	 *
+	 * @param productElement 크롤링된 상품 요소
+	 * @param query          검색 키워드
+	 * @return Product 객체 (추출 실패 시 null 반환)
+	 */
+	private Product extractProductInfo(WebElement productElement, String query) {
+		try {
+			String title = productElement.findElement(By.className("name")).getText();
+			String priceText = productElement.findElement(By.className("amount")).getText().replaceAll("[^0-9]", "");
+			Integer price = priceText.isEmpty() ? 0 : Integer.parseInt(priceText);
+			String imageUrl = productElement.findElement(By.tagName("img")).getAttribute("src");
+			String link = productElement.findElement(By.tagName("a")).getAttribute("href");
+
+			Product product = new Product();
+			product.setTitle(title);
+			product.setPrice(price);
+			product.setImage(imageUrl);
+			product.setMallName("Kream");
+			product.setLink(link);
+			product.setKeyword(query);
+
+			return product;
+		} catch (NoSuchElementException e) {
+			log.warn("상품 정보 추출 실패: {}", e.getMessage());
+			return null;
+		}
 	}
 }

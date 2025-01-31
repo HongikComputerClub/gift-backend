@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * OpenAI API 연동을 위한 설정 클래스
+ */
 @Configuration
 @Slf4j
 public class GptConfig {
@@ -17,15 +20,24 @@ public class GptConfig {
     private String model;
 
     @Value("${openai.api.url}")
-    private String apiURL;
+    private String apiUrl;
 
+    /**
+     * OpenAI API 요청을 위한 RestTemplate 빈 생성
+     *
+     * @return OpenAI API 호출을 위한 RestTemplate
+     */
     @Bean
-    public RestTemplate template(){
+    public RestTemplate restTemplate() {
+        log.info("Initializing RestTemplate for OpenAI API...");
+
         RestTemplate restTemplate = new RestTemplate();
-        restTemplate.getInterceptors().add((request, body,execution) ->{
+        restTemplate.getInterceptors().add((request, body, execution) -> {
             request.getHeaders().add("Authorization", "Bearer " + openAiKey);
+            request.getHeaders().add("Content-Type", "application/json");
             return execution.execute(request, body);
         });
+
         return restTemplate;
     }
 
@@ -33,7 +45,7 @@ public class GptConfig {
         return model;
     }
 
-    public String getApiURL() {
-        return apiURL;
+    public String getApiUrl() {
+        return apiUrl;
     }
 }
