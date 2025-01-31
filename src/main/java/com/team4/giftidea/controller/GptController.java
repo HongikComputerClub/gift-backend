@@ -5,7 +5,6 @@ import com.team4.giftidea.dto.GptResponseDTO;
 import com.team4.giftidea.configuration.GptConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -13,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/gpt")

@@ -6,9 +6,6 @@
 application.yml
 application-*.yml
 
-# Spring Boot 설정 파일 무시
-src/main/resources/application.properties
-
 # 빌드 산출물 무시
 *.class
 *.jar
