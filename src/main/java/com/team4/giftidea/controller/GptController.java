@@ -5,7 +5,9 @@ import com.team4.giftidea.dto.GptRequestDTO;
 import com.team4.giftidea.dto.GptResponseDTO;
 import com.team4.giftidea.entity.Product;
 import com.team4.giftidea.service.ProductService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -45,6 +47,7 @@ public class GptController {
    * @param theme    선물 테마 (birth, anniversary 등)
    * @return 검색된 상품 리스트
    */
+  @Operation(summary = "GPT 기반 선물 추천 및 상품 검색", description = "파일을 기반으로 GPT로부터 카테고리를 생성하고 DB에서 해당 카테고리의 상품들을 검색하여 반환합니다.")
   @GetMapping("/chat")
   public List<Product> chat(
       @RequestParam(name = "filePath") String filePath,
@@ -52,6 +55,7 @@ public class GptController {
       @RequestParam(name = "sex") String sex,
       @RequestParam(name = "theme") String theme) {
 
+    // GPT로부터 카테고리 추출
     String prompt = generatePrompt(filePath, relation, sex, theme);
     GptRequestDTO request = new GptRequestDTO(gptConfig.getModel(), prompt);
     GptResponseDTO response = restTemplate.postForObject(gptConfig.getApiUrl(), request, GptResponseDTO.class);
@@ -109,6 +113,7 @@ public class GptController {
     }
   }
 
+  // GPT 응답에서 키워드 추출
   private String extractKeywordsAndReasonsCoupleMan(String theme, String message) {
     return generateText(String.format("""
             다음 텍스트를 참고하여 남자 애인이 %s에 선물로 받으면 좋아할 카테고리 3개와 판단 근거를 제공해주세요.
