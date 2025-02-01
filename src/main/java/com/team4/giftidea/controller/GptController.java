@@ -3,7 +3,11 @@ package com.team4.giftidea.controller;
 import com.team4.giftidea.configuration.GptConfig;
 import com.team4.giftidea.dto.GptRequestDTO;
 import com.team4.giftidea.dto.GptResponseDTO;
+import com.team4.giftidea.entity.Product;
+import com.team4.giftidea.service.ProductService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -12,6 +16,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.Arrays;
 
 /**
  * GPT API와 연동하여 선물 추천을 제공하는 컨트롤러
@@ -23,36 +29,45 @@ public class GptController {
 
   private final RestTemplate restTemplate;
   private final GptConfig gptConfig;
+  private final ProductService productService;
 
   @Autowired
-  public GptController(RestTemplate restTemplate, GptConfig gptConfig) {
+  public GptController(RestTemplate restTemplate, GptConfig gptConfig, ProductService productService) {
     this.restTemplate = restTemplate;
     this.gptConfig = gptConfig;
+    this.productService = productService;
   }
 
   /**
-   * GPT API를 호출하여 선물 추천을 생성합니다.
+   * GPT API를 호출하여 선물 추천을 생성하고, 해당 카테고리로 DB에서 상품을 검색하여 반환합니다.
    *
    * @param filePath 대화 내용이 저장된 파일 경로
    * @param relation 사용자와의 관계 (예: couple, parent, friend)
    * @param sex      성별 (male, female)
    * @param theme    선물 테마 (birth, anniversary 등)
-   * @return GPT가 생성한 선물 추천 메시지
+   * @return 검색된 상품 리스트
    */
+  @Operation(summary = "GPT 기반 선물 추천 및 상품 검색", description = "파일을 기반으로 GPT로부터 카테고리를 생성하고 DB에서 해당 카테고리의 상품들을 검색하여 반환합니다.")
   @GetMapping("/chat")
-  public String chat(
+  public List<Product> chat(
       @RequestParam(name = "filePath") String filePath,
       @RequestParam(name = "relation") String relation,
       @RequestParam(name = "sex") String sex,
       @RequestParam(name = "theme") String theme) {
 
+    // GPT로부터 카테고리 추출
     String prompt = generatePrompt(filePath, relation, sex, theme);
     GptRequestDTO request = new GptRequestDTO(gptConfig.getModel(), prompt);
     GptResponseDTO response = restTemplate.postForObject(gptConfig.getApiUrl(), request, GptResponseDTO.class);
 
-    return response != null && !response.getChoices().isEmpty()
-        ? response.getChoices().get(0).getMessage().getContent()
-        : "GPT 응답에 오류가 발생했습니다.";
+    if (response != null && !response.getChoices().isEmpty()) {
+      // GPT 응답에서 카테고리 추출
+      String categories = response.getChoices().get(0).getMessage().getContent();
+      // 카테고리로 상품 검색
+      List<String> keywords = Arrays.asList(categories.split(","));
+      return productService.searchByKeywords(keywords, 0); // 첫 페이지의 상품 20개 검색
+    }
+    return List.of(); // 상품이 없거나 오류 발생 시 빈 리스트 반환
   }
 
   /**
@@ -98,6 +113,7 @@ public class GptController {
     }
   }
 
+  // GPT 응답에서 키워드 추출
   private String extractKeywordsAndReasonsCoupleMan(String theme, String message) {
     return generateText(String.format("""
             다음 텍스트를 참고하여 남자 애인이 %s에 선물로 받으면 좋아할 카테고리 3개와 판단 근거를 제공해주세요.
