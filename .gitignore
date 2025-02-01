@@ -15,6 +15,7 @@ application.yml
 # 빌드 산출물 무시
 *.class
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
