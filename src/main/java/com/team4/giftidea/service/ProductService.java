@@ -3,8 +3,11 @@ package com.team4.giftidea.service;
 import com.team4.giftidea.entity.Product;
 import com.team4.giftidea.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,5 +43,25 @@ public class ProductService {
 				productRepository.save(product);
 			}
 		});
+	}
+
+	/**
+	 * 여러 키워드를 받아서 각 키워드에 해당하는 상품들을 최대 20개씩 반환합니다.
+	 *
+	 * @param keywords 검색할 키워드 목록
+	 * @param pageNumber 페이지 번호
+	 * @return 해당 키워드들에 맞는 상품 리스트
+	 */
+	public List<Product> searchByKeywords(List<String> keywords, int pageNumber) {
+		List<Product> allProducts = new ArrayList<>();
+
+		// 각 키워드로 상품 검색
+		for (String keyword : keywords) {
+			// 페이지네이션 처리
+			Page<Product> productPage = productRepository.findByKeyword(keyword, PageRequest.of(pageNumber, 20));
+			allProducts.addAll(productPage.getContent());  // getContent() 호출
+		}
+
+		return allProducts;
 	}
 }
