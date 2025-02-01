@@ -1,0 +1,33 @@
+naver:
+  api:
+    base-url: https://openapi.naver.com
+    client-id: ${NAVER_API_CLIENT_ID}
+    client-secret: ${NAVER_API_CLIENT_SECRET}
+
+selenium:
+  chromedriver-path: "/usr/local/bin/chromedriver"
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+logging:
+  level:
+    com.team4.giftidea: DEBUG
+    org.springframework.web: INFO
+
+openai:
+  model: "gpt-4o"
+  api:
+    key: ${OPENAI_API_KEY}
+    url: "https://api.openai.com/v1/chat/completions"
