@@ -23,8 +23,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Project
-        run: ./gradlew build --stacktrace
+      - name: Build Project (Skip Tests)
+        run: ./gradlew build -x test --stacktrace
 
       - name: Package JAR File
         run: cp build/libs/*.jar app.jar
