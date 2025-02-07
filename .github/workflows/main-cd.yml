@@ -26,8 +26,11 @@ jobs:
       - name: Build Project (Skip Tests)
         run: ./gradlew build -x test --stacktrace
 
-      - name: Package JAR File
-        run: cp build/libs/*.jar app.jar
+      - name: List build output
+        run: ls -lh build/libs/
+
+      - name: Copy JAR File
+        run: cp build/libs/app.jar app.jar
 
       - name: Deploy to AWS EC2
         uses: appleboy/scp-action@v0.1.4
