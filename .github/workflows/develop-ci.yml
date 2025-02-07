@@ -1,0 +1,67 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: team4
+          MYSQL_USER: team4
+          MYSQL_PASSWORD: 1234
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/team4
+      DB_USERNAME: team4
+      DB_PASSWORD: 1234
+      NAVER_API_CLIENT_ID: ${{ secrets.NAVER_API_CLIENT_ID }}
+      NAVER_API_CLIENT_SECRET: ${{ secrets.NAVER_API_CLIENT_SECRET }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SPRING_PROFILES_ACTIVE: prod  # Specify the active profile for production
+
+    steps:
+      # Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Set up JDK 21 for the project
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Grant execute permission for Gradle wrapper
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Validate Gradle wrapper version
+      - name: Validate Gradle Wrapper
+        run: ./gradlew --version
+
+      # Install dependencies using Gradle
+      - name: Install Dependencies
+        run: ./gradlew dependencies --no-daemon
+
+      # Build the project using Gradle without daemon
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon
+
+      # Run tests to check the validity of the code
+      - name: Run Tests
+        run: ./gradlew test --no-daemon
