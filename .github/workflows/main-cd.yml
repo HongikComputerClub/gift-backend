@@ -15,39 +15,62 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Build without tests
+        run: |
+          set -x  # Enable debug mode
+          ./gradlew clean assemble || { echo "Gradle build failed"; exit 1; }
 
-      - name: Build Project (Skip Tests)
-        run: ./gradlew build -x test --stacktrace
-
-      - name: List build output
-        run: ls -lh build/libs/
+      - name: Check JAR file existence
+        run: |
+          set -x  # Enable debug mode
+          JAR_FILE=$(find build/libs -name "*.jar" | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            echo "No JAR file found!"
+            exit 1
+          fi
+          echo "JAR file found: $JAR_FILE"
+          echo "JAR_FILE=$JAR_FILE" >> $GITHUB_ENV
 
       - name: Copy JAR File
-        run: cp build/libs/app.jar app.jar
+        run: cp ${{ env.JAR_FILE }} app.jar
 
-      - name: Deploy to AWS EC2
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "app.jar"
-          target: "~/backend"
+      - name: Deploy to Server
+        if: success()
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          # Start ssh-agent and add the private key
+          eval "$(ssh-agent -s)"
+          echo "$SSH_KEY" | tr -d '\r' > private_key.pem
+          chmod 600 private_key.pem
+          ssh-add private_key.pem
 
-      - name: Restart Backend on EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            cd ~/backend
+          # Disable strict host key checking
+          ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << 'EOF'
+            echo "Stopping existing application if running..."
             pkill -f 'java -jar' || true
-            nohup java -jar app.jar > log.txt 2>&1 &
+            echo "Cleaning up old files..."
+            rm -rf ~/backend/build/libs/*
+          EOF
+
+          # Copy built JAR file to the server
+          scp -r ${{ env.JAR_FILE }} $SSH_USER@$SSH_HOST:~/backend/build/libs/
+
+          # Start the application on the server
+          ssh $SSH_USER@$SSH_HOST << 'EOF'
+            pkill -f 'java -jar' || true
+            cd ~/backend/build/libs
+            nohup java -jar -Dspring.profiles.active=prod $(ls *.jar) > app.log 2>&1 &
+          EOF
+
+      - name: Clean up
+        if: success()
+        run: rm -f private_key.pem
