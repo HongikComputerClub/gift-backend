@@ -46,14 +46,6 @@ public class GptController {
    * @param theme       선물의 주제 (ex: 'birthday', 'valentine', etc.)
    * @return 추천된 상품 목록
    */
-  /**
-   * @param file        전송된 파일 (카카오톡 대화 내용)
-   * @param targetName  대상 이름 (ex: '여자친구', '남자친구')
-   * @param relation    관계 (ex: 'couple', 'friend', etc.)
-   * @param sex         대상 성별 ('male' 또는 'female')
-   * @param theme       선물의 주제 (ex: 'birthday', 'valentine', etc.)
-   * @return 추천된 상품 목록
-   */
   @PostMapping("/process")
   @Operation(description = "카카오톡 대화를 분석하여 키워드를 추출하고 그에 맞는 선물 목록을 추천합니다.")
   public List<Product> processFileAndRecommend(
