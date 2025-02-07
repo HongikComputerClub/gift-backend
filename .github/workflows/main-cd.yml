@@ -62,7 +62,7 @@ jobs:
         # Start the application on the server
         ssh $SSH_USER@$SSH_HOST << 'EOF'
           pkill -f 'java -jar' || true
-          cd ~/gift-backend/build/libs
+          cd ~/backend/build/libs
           nohup java -jar -Dspring.profiles.active=prod gift-backend-0.0.1-SNAPSHOT.jar &
         EOF
 
