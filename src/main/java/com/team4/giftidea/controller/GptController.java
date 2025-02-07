@@ -9,6 +9,9 @@ import com.team4.giftidea.service.ProductService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +25,7 @@ import java.util.*;
 /**
  * GPT API와 연동하여 선물 추천을 제공하는 컨트롤러
  */
+@Tag(name = "GPT 추천 API", description = "GPT를 이용하여 사용자 맞춤 선물 추천을 제공하는 API")
 @RestController
 @RequestMapping("/api/gpt")
 @Slf4j
@@ -46,8 +50,13 @@ public class GptController {
    * @param theme       선물의 주제 (ex: 'birthday', 'valentine', etc.)
    * @return 추천된 상품 목록
    */
-  @PostMapping("/process")
-  @Operation(description = "카카오톡 대화를 분석하여 키워드를 추출하고 그에 맞는 선물 목록을 추천합니다.")
+  @Operation(summary = "대화 분석 후 추천 상품 반환", description = "카카오톡 대화를 분석하여 GPT API를 통해 키워드를 추출하고, 해당 키워드에 맞는 추천 상품을 반환합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "추천 상품 목록 반환"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
+        @ApiResponse(responseCode = "500", description = "서버 내부 오류 발생")
+    })
+    @PostMapping("/process")
   public List<Product> processFileAndRecommend(
       @RequestParam("file") @Parameter(description = "카카오톡 대화 내용이 포함된 파일", required = true) MultipartFile file,
       @RequestParam("targetName") @Parameter(description = "대상 이름", required = true) String targetName,
