@@ -53,11 +53,11 @@ jobs:
           echo "Stopping existing application if running..."
           pkill -f 'java -jar' || true
           echo "Cleaning up old files..."
-          rm -rf ~/gift-backend/build/libs/*
+          rm -rf ~/backend/build/libs/*
         EOF
 
         # Copy built JAR file to the server
-        scp -r build/libs/gift-backend-0.0.1-SNAPSHOT.jar $SSH_USER@$SSH_HOST:~/gift-backend/build/libs/
+        scp -r build/libs/gift-backend-0.0.1-SNAPSHOT.jar $SSH_USER@$SSH_HOST:~/backend/build/libs/
 
         # Start the application on the server
         ssh $SSH_USER@$SSH_HOST << 'EOF'
