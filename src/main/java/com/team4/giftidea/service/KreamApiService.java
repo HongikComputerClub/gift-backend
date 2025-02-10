@@ -48,6 +48,7 @@ public class KreamApiService {
 		System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 
 		ChromeOptions options = new ChromeOptions();
+		options.setBinary("/opt/google/chrome/chrome");
 		options.addArguments("--headless=new");  // 최신 headless 모드 사용
 		options.addArguments("--disable-gpu");
 		options.addArguments("--no-sandbox");
