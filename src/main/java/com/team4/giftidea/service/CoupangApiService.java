@@ -24,8 +24,7 @@ import java.util.List;
 public class CoupangApiService {
 
 	private static final String COUPANG_SEARCH_URL = "https://www.coupang.com/np/search?q=%s&channel=user";
-	private static final String USER_AGENT = "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
+	private static final String USER_AGENT = "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36";
 
 	@Value("${selenium.chromedriver-path}")
 	private String chromeDriverPath;
@@ -52,6 +51,17 @@ public class CoupangApiService {
 		System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 
 		ChromeOptions options = new ChromeOptions();
+		options.addArguments("--headless=new");  // 최신 headless 모드 사용
+		options.addArguments("--disable-gpu");
+		options.addArguments("--no-sandbox");
+		options.addArguments("--disable-dev-shm-usage");
+		options.addArguments("--remote-debugging-port=9222");
+		options.addArguments("--disable-software-rasterizer");
+		options.addArguments("--disable-extensions");
+		options.addArguments("--disable-popup-blocking");
+		options.addArguments("--window-size=1920,1080");
+
+		// 최신 User-Agent 추가
 		options.addArguments(USER_AGENT);
 
 		WebDriver driver = new ChromeDriver(options);
