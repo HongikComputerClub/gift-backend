@@ -48,15 +48,16 @@ public class KreamApiService {
 		System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 
 		ChromeOptions options = new ChromeOptions();
-		options.addArguments("--headless=new");  // 최신 headless 모드 사용
-		options.addArguments("--disable-gpu");
-		options.addArguments("--no-sandbox");
-		options.addArguments("--disable-dev-shm-usage");
-		options.addArguments("--remote-debugging-port=9222");
+		options.addArguments("--headless=new");  // 최신 headless 모드
+		options.addArguments("--disable-gpu");  // GPU 가속 비활성화
+		options.addArguments("--no-sandbox");  // 샌드박스 비활성화 (AWS 필수)
+		options.addArguments("--disable-dev-shm-usage");  // 공유 메모리 사용 비활성화
+		options.addArguments("--remote-debugging-port=9222");  // 디버깅 포트
+		options.addArguments("--window-size=1920,1080");  // 창 크기 설정
 		options.addArguments("--disable-software-rasterizer");
+		options.addArguments("--disable-crash-reporter");
 		options.addArguments("--disable-extensions");
-		options.addArguments("--disable-popup-blocking");
-		options.addArguments("--window-size=1920,1080");
+		options.addArguments("--disable-hang-monitor");
 
 		// 최신 User-Agent 추가
 		options.addArguments(USER_AGENT);
