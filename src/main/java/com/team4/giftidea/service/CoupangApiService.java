@@ -50,26 +50,33 @@ public class CoupangApiService {
     public List<Product> searchItems(String query) {
 	    List<Product> productList = new ArrayList<>();
 	    System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+	ChromeOptions options = new ChromeOptions();
+	options.setBinary("/opt/google/chrome/chrome");
+	options.addArguments("--headless=new");  // ✅ 기본적으로 유지 (테스트 후 필요 시 제거)
+	options.addArguments("--disable-gpu");
+	options.addArguments("--no-sandbox");
+	options.addArguments("--disable-dev-shm-usage");
+	options.addArguments("--remote-debugging-port=9222");
+	options.addArguments("--window-size=1920,1080");
+	options.addArguments("--disable-software-rasterizer");
+	options.addArguments("--disable-extensions");
+	options.addArguments("--disable-popup-blocking");
 	
-	    ChromeOptions options = new ChromeOptions();
-	    options.setBinary("/opt/google/chrome/chrome"); // AWS 환경용 크롬 바이너리 경로
-	    options.addArguments("--headless");
-	    options.addArguments("--no-sandbox");
-	    options.addArguments("--disable-gpu");
-	    options.addArguments("--disable-dev-shm-usage");
-	    options.addArguments("--disable-software-rasterizer");
-	    options.addArguments("--disable-crash-reporter");
-	    options.addArguments("--disable-extensions");
-	    options.addArguments("--disable-popup-blocking");
-	    options.addArguments("--disable-background-networking");
-	    options.addArguments("--disable-features=NetworkService,NetworkServiceInProcess");
-	    options.addArguments("--window-size=1920,1080");
-	    options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.63 Safari/537.36");
-	    options.addArguments("--disable-blink-features=AutomationControlled"); // 탐지 우회
+	// ✅ 최신 User-Agent 적용 (봇 탐지 우회)
+	options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.63 Safari/537.36");
 	
-	    log.info("ChromeDriver 실행 준비 완료. 드라이버 경로: {}", chromeDriverPath);
+	WebDriver driver = new ChromeDriver(options);
 	
-	    WebDriver driver = new ChromeDriver(options);
+	// ✅ navigator.webdriver 속성 제거 (봇 탐지 우회)
+	JavascriptExecutor js = (JavascriptExecutor) driver;
+	js.executeScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+	
+	// ✅ JavaScript 실행 대기
+	Thread.sleep(5000);
+	
+	// ✅ HTML 확인 (디버깅용)
+	String pageSource = driver.getPageSource();
+	System.out.println("Current Page Source: " + pageSource.substring(0, 500));  // 앞부분 500자만 출력
 	
 	    try {
 	        log.info("검색어: {}", query);
