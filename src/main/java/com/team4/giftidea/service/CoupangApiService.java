@@ -51,21 +51,14 @@ public class CoupangApiService {
 		System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 
 		ChromeOptions options = new ChromeOptions();
-	        options.setBinary("/opt/google/chrome/chrome");  // 크롬 바이너리 직접 지정 (AWS 환경)
-	        options.addArguments("--disable-gpu");
+		options.addArguments("--headless=new"); // Headless 모드 유지
+		options.addArguments("--disable-gpu");
 		options.addArguments("--no-sandbox");
-	    	options.addArguments("--disable-dev-shm-usage");
-	    	options.addArguments("--remote-debugging-port=9222");
-		options.addArguments("--window-size=1920,1080");
-		options.addArguments("--disable-software-rasterizer");
-		options.addArguments("--disable-crash-reporter");
-		options.addArguments("--disable-extensions");
-		options.addArguments("--disable-hang-monitor");
-	
-	    	// 최신 User-Agent 추가
-	    	options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.63 Safari/537.36");
-	
-	   	WebDriver driver = new ChromeDriver(options);
+		options.addArguments("--disable-dev-shm-usage");
+		options.addArguments("--remote-debugging-port=9222");
+		options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"); // 브라우저 속이기
+		
+		WebDriver driver = new ChromeDriver(options);
 
 		try {
 			String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
