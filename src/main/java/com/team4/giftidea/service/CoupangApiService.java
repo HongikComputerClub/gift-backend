@@ -50,33 +50,22 @@ public class CoupangApiService {
     public List<Product> searchItems(String query) {
 	    List<Product> productList = new ArrayList<>();
 	    System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-	ChromeOptions options = new ChromeOptions();
-	options.setBinary("/opt/google/chrome/chrome");
-	options.addArguments("--headless=new");  // ✅ 기본적으로 유지 (테스트 후 필요 시 제거)
-	options.addArguments("--disable-gpu");
-	options.addArguments("--no-sandbox");
-	options.addArguments("--disable-dev-shm-usage");
-	options.addArguments("--remote-debugging-port=9222");
-	options.addArguments("--window-size=1920,1080");
-	options.addArguments("--disable-software-rasterizer");
-	options.addArguments("--disable-extensions");
-	options.addArguments("--disable-popup-blocking");
+	    ChromeOptions options = new ChromeOptions();
+	    options.setBinary("/opt/google/chrome/chrome");  // 크롬 바이너리 직접 지정 (AWS 환경)
+	    options.addArguments("--headless");  // 기본적으로 headless 모드 유지
+	    options.addArguments("--disable-gpu");
+	    options.addArguments("--no-sandbox");
+	    options.addArguments("--disable-dev-shm-usage");
+	    options.addArguments("--remote-debugging-port=9222");
+	    options.addArguments("--window-size=1920,1080");
+	    options.addArguments("--disable-software-rasterizer");
+	    options.addArguments("--disable-extensions");
+	    options.addArguments("--disable-popup-blocking");
 	
-	// ✅ 최신 User-Agent 적용 (봇 탐지 우회)
-	options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.63 Safari/537.36");
+	    // 최신 User-Agent 추가 (봇 탐지 우회)
+	    options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.63 Safari/537.36");
 	
-	WebDriver driver = new ChromeDriver(options);
-	
-	// ✅ navigator.webdriver 속성 제거 (봇 탐지 우회)
-	JavascriptExecutor js = (JavascriptExecutor) driver;
-	js.executeScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
-	
-	// ✅ JavaScript 실행 대기
-	Thread.sleep(5000);
-	
-	// ✅ HTML 확인 (디버깅용)
-	String pageSource = driver.getPageSource();
-	System.out.println("Current Page Source: " + pageSource.substring(0, 500));  // 앞부분 500자만 출력
+	    WebDriver driver = new ChromeDriver(options);
 	
 	    try {
 	        log.info("검색어: {}", query);
