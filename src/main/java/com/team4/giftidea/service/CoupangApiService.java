@@ -52,6 +52,7 @@ public class CoupangApiService {
 	
 	    ChromeOptions options = new ChromeOptions();
 	    options.setBinary("/opt/google/chrome/chrome"); // AWS 환경용 크롬 바이너리 경로
+	    options.addArguments("--headless");
 	    options.addArguments("--no-sandbox");
 	    options.addArguments("--disable-gpu");
 	    options.addArguments("--disable-dev-shm-usage");
