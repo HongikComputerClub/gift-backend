@@ -54,7 +54,6 @@ public class CoupangApiService {
         log.debug("ChromeDriver 경로: {}", chromeDriverPath);
 
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new");
         options.addArguments("--disable-gpu");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
