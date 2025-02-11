@@ -41,57 +41,80 @@ public class CoupangApiService {
 	}
 
 	/**
-	 * 주어진 키워드에 대해 쿠팡에서 상품을 검색하고 리스트로 반환합니다.
-	 *
-	 * @param query 검색 키워드
-	 * @return 크롤링된 상품 리스트
-	 */
-	public List<Product> searchItems(String query) {
-		List<Product> productList = new ArrayList<>();
-		System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+     * 주어진 키워드에 대해 쿠팡에서 상품을 검색하고 리스트로 반환합니다.
+     *
+     * @param query 검색 키워드
+     * @return 크롤링된 상품 리스트
+     */
+    public List<Product> searchItems(String query) {
+        List<Product> productList = new ArrayList<>();
+        log.info("크롤링 시작: 키워드 = {}", query);
 
-		ChromeOptions options = new ChromeOptions();
-		options.setBinary("/opt/google/chrome/chrome");
-		options.addArguments("--headless"); // Headless 모드 유지
-		options.addArguments("--disable-gpu");
-		options.addArguments("--no-sandbox");
-		options.addArguments("--disable-dev-shm-usage");
-		options.addArguments("--remote-debugging-port=9222");
-		options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36"); // 브라우저 속이기
-		
-		WebDriver driver = new ChromeDriver(options);
+        System.setProperty("webdriver.chrome.driver", chromeDriverPath);
+        log.debug("ChromeDriver 경로: {}", chromeDriverPath);
 
-		try {
-			String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-			String searchUrl = String.format(COUPANG_SEARCH_URL, encodedQuery);
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--remote-debugging-port=9222");
+        options.addArguments("--disable-software-rasterizer");
+        options.addArguments("--disable-extensions");
+        options.addArguments("--disable-popup-blocking");
+        options.addArguments("--window-size=1920,1080");
+        options.addArguments(USER_AGENT);
 
-			driver.get(searchUrl);
-			WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(90));
-			wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".search-product")));
+        WebDriver driver = null; // 드라이버 선언
 
-			List<WebElement> products = driver.findElements(By.cssSelector(".search-product"));
+        try {
+            driver = new ChromeDriver(options); // 드라이버 초기화
+            log.info("ChromeDriver 초기화 성공");
 
-			for (WebElement productElement : products) {
-				try {
-					Product productEntity = extractProductInfo(productElement, query);
-					if (productEntity != null) {
-						productList.add(productEntity);
-						productService.saveItems(List.of(productEntity), query);
-					}
-				} catch (NoSuchElementException e) {
-					log.warn("요소를 찾을 수 없음: {}", e.getMessage());
-				}
-			}
-		} catch (TimeoutException e) {
-			log.error("페이지 로딩 시간 초과: {}", e.getMessage());
-		} catch (Exception e) {
-			log.error("크롤링 중 오류 발생: {}", e.getMessage());
-		} finally {
-			driver.quit(); // 크롤링 후 브라우저 종료
-		}
+            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            String searchUrl = String.format(COUPANG_SEARCH_URL, encodedQuery);
 
-		return productList;
-	}
+            log.info("쿠팡 검색 URL: {}", searchUrl);
+            driver.get(searchUrl);
+
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(90));
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".search-product")));
+            log.info("쿠팡 검색 페이지 로딩 완료");
+
+
+            List<WebElement> products = driver.findElements(By.cssSelector(".search-product"));
+            log.info("검색된 상품 개수: {}", products.size());
+
+            for (WebElement productElement : products) {
+                try {
+                    Product productEntity = extractProductInfo(productElement, query);
+                    if (productEntity != null) {
+                        productList.add(productEntity);
+                        productService.saveItems(List.of(productEntity), query);
+                        log.debug("상품 정보 추출 및 저장 성공: {}", productEntity);
+                    }
+                } catch (NoSuchElementException e) {
+                    log.warn("요소 찾기 실패: {}", e.getMessage(), e); // 예외 객체 e도 함께 로깅
+                }
+            }
+        } catch (TimeoutException e) {
+            log.error("페이지 로딩 시간 초과: {}", e.getMessage(), e); // 예외 객체 e도 함께 로깅
+        } catch (SessionNotCreatedException e) {
+            log.error("세션 생성 실패: {}", e.getMessage(), e);
+        } catch (WebDriverException e) {
+            log.error("WebDriver 오류: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("크롤링 중 오류 발생: {}", e.getMessage(), e); // 예외 객체 e도 함께 로깅
+        } finally {
+            if (driver != null) { // 드라이버가 null이 아닌 경우에만 종료
+                driver.quit();
+                log.info("ChromeDriver 종료");
+            }
+        }
+
+        log.info("크롤링 종료: 반환된 상품 개수 = {}", productList.size());
+        return productList;
+    }
 
 	/**
 	 * 개별 상품 정보를 추출하여 Product 객체를 생성합니다.
