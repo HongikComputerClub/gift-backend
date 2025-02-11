@@ -64,7 +64,7 @@ public class CoupangApiService {
 	
 	    // 최신 User-Agent 추가 (봇 탐지 우회)
 	    options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.63 Safari/537.36");
-	
+	    
 	    WebDriver driver = new ChromeDriver(options);
 	
 	    try {
