@@ -60,11 +60,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // 허용할 출처(Origin) 설정
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",   // 로컬 개발 환경
-                "https://presentalk.store", // 프론트엔드 배포 주소
-                "https://app.presentalk.store" // 백엔드 API 주소
-        ));
+        configuration.setAllowedOrigins(List.of("*"));
         
         // 허용할 HTTP 메서드 설정
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
