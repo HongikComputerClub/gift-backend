@@ -180,21 +180,23 @@ public class GptController {
   private String generatePrompt(List<String> processedMessages, String relation, String sex, String theme) {
     String combinedMessages = String.join("\n", processedMessages);  // List<String>을 하나의 String으로 합침
 
-    switch (relation) {
-      case "couple":
-        return sex.equals("male") ? extractKeywordsAndReasonsCoupleMan(theme, combinedMessages)
-            : extractKeywordsAndReasonsCoupleWoman(theme, combinedMessages);
-      case "parent":
-        return extractKeywordsAndReasonsParents(theme, combinedMessages);
-      case "friend":
-        return extractKeywordsAndReasonsFriend(theme, combinedMessages);
-      case "housewarming":
-        return extractKeywordsAndReasonsHousewarming(combinedMessages);
-      case "valentine":
-        return extractKeywordsAndReasonsSeasonal(theme, combinedMessages);
-      default:
-        return "조건에 맞는 선물 추천이 없습니다.";
+    if ("couple".equals(relation)) {
+      if ("male".equals(sex)) {
+        return extractKeywordsAndReasonsCoupleMan(theme, combinedMessages);
+      } else if ("female".equals(sex)) {
+        return extractKeywordsAndReasonsCoupleWoman(theme, combinedMessages);
+      }
+    } else if ("parent".equals(relation)) {
+      return extractKeywordsAndReasonsParents(theme, combinedMessages);
+    } else if ("friend".equals(relation)) {
+      return extractKeywordsAndReasonsFriend(theme, combinedMessages);
+    } else if ("housewarming".equals(theme)) {
+      return extractKeywordsAndReasonsHousewarming(combinedMessages);
+    } else if ("valentine".equals(theme)) {
+      return extractKeywordsAndReasonsSeasonal(theme, combinedMessages);
     }
+
+    return "조건에 맞는 선물 추천 기능이 없습니다.";
   }
 
   private String generateText(String prompt) {
