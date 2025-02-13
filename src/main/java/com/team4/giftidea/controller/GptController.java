@@ -67,7 +67,6 @@ public class GptController {
       @RequestParam("sex") @Parameter(description = "대상 성별 (male 또는 female)", required = true) String sex,
       @RequestParam("theme") @Parameter(description = "선물 주제 (birthday, valentine 등)", required = true) String theme
   ) {
-    log.info("대화 분석 시작 - 대상: {}, 관계: {}, 성별: {}, 테마: {}", targetName, relation, sex, theme);
 
     // 1. 파일 전처리
     List<String> processedMessages = preprocessKakaoFile(file, targetName);
@@ -78,10 +77,8 @@ public class GptController {
     // 3. 키워드 리스트 변환 및 상품 검색
     List<String> keywords = Arrays.asList(categories.split(","));
     keywords.replaceAll(String::trim);
-    log.debug("🔍 추출된 키워드 목록: {}", keywords);
 
     List<Product> products = productService.searchByKeywords(keywords);
-    log.debug("🎁 추천된 상품: {}", products);
 
     return products;
   }
@@ -202,12 +199,9 @@ public class GptController {
   private String generateText(String prompt) {
     GptRequestDTO request = new GptRequestDTO(gptConfig.getModel(), prompt);
     try {
-      log.info("GPT 요청 시작 - 모델: {}", gptConfig.getModel());
-      log.debug("요청 내용: {}", prompt);
 
       // HTTP 요청 전에 request 객체 로깅
       ObjectMapper mapper = new ObjectMapper();
-      log.debug("전체 요청 바디: {}", mapper.writeValueAsString(request));
 
       GptResponseDTO response = restTemplate.postForObject(gptConfig.getApiUrl(), request, GptResponseDTO.class);
 
@@ -218,12 +212,10 @@ public class GptController {
         // 응답에 'choices'가 있고, 그 중 첫 번째 항목이 존재하는지 확인
         if (response.getChoices() != null && !response.getChoices().isEmpty()) {
           String content = response.getChoices().get(0).getMessage().getContent();
-          log.debug("추출된 콘텐츠: {}", content);
 
           // 필요한 형태로 카테고리 추출 (예: "1. [무선이어폰, 스마트워치, 향수]" 형태)
           if (content.contains("1.")) {
             String categories = content.split("1.")[1].split("\n")[0]; // 첫 번째 카테고리 라인 추출
-            log.debug("GPT 응답에서 추출된 카테고리: {}", categories);
 
             // 괄호 안의 항목들을 추출하고, 쉼표로 구분하여 키워드 리스트 만들기
             String[] categoryArray = categories.split("\\[|\\]")[1].split(",");
@@ -244,7 +236,6 @@ public class GptController {
       return "GPT 응답 오류 발생";
     } catch (Exception e) {
       log.error("GPT 요청 중 오류 발생: ", e);
-      log.error("상세 오류 메시지: {}", e.getMessage());
       if (e.getCause() != null) {
         log.error("원인 예외: {}", e.getCause().getMessage());
       }
