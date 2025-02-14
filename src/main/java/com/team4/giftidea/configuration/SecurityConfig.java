@@ -50,7 +50,8 @@ public class SecurityConfig {
         // 허용할 출처 설정
         configuration.setAllowedOrigins(List.of(
                 "https://presentalk.store",
-                "https://app.presentalk.store"
+                "https://app.presentalk.store",
+                "http://localhost:5173" // 로컬 개발 환경 추가
         ));
         
         // 허용할 HTTP 메서드 설정
