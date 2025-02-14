@@ -43,7 +43,7 @@ public class GptController {
 
 
   // GPT 모델의 입력 토큰 제한 (예: 출력 토큰 고려 후 설정, 여기서는 예시로 25000)
-  private static final int GPT_INPUT_LIMIT = 12000;
+  private static final int GPT_INPUT_LIMIT = 11000;
 
   /**
    * 파일의 아랫부분부터 토큰을 센 후, 총 토큰 수가 GPT_INPUT_LIMIT 이하인 내용만
