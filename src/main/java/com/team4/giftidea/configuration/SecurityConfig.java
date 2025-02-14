@@ -2,6 +2,7 @@ package com.team4.giftidea.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -32,6 +33,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // CSRF 비활성화
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/admin/**").authenticated() // "/admin/**" 경로는 인증 필요
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight 요청 허용
                         .anyRequest().permitAll() // 나머지 요청은 인증 없이 허용
                 );
 
@@ -47,11 +49,8 @@ public class SecurityConfig {
 
         // 허용할 출처 설정
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:3000",
                 "https://presentalk.store",
-                "https://app.presentalk.store",
-                "http://presentalk.s3-website.ap-northeast-2.amazonaws.com"
+                "https://app.presentalk.store"
         ));
         
         // 허용할 HTTP 메서드 설정
@@ -62,6 +61,9 @@ public class SecurityConfig {
 
         // 쿠키 포함 요청 허용
         configuration.setAllowCredentials(true);
+
+        // Preflight 요청 캐싱 (성능 향상)
+        configuration.setMaxAge(3600L); // 1시간 동안 Preflight 요청 결과 캐싱
 
         // CORS 설정을 특정 경로에 적용
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
