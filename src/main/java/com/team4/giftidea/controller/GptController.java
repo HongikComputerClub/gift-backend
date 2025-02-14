@@ -64,7 +64,7 @@ public class GptController {
       @ApiResponse(responseCode = "500", description = "서버 내부 오류 발생")
   })
   @PostMapping(value = "/process", consumes = "multipart/form-data", produces = "application/json")
-  public List<Product> processFileAndRecommend(
+  public List<Object> processFileAndRecommend(
       @RequestParam("file") @Parameter(description = "카카오톡 대화 파일 (.txt)", required = true) MultipartFile file,
       @RequestParam("targetName") @Parameter(description = "분석 대상 이름 (예: '여자친구')", required = true) String targetName,
       @RequestParam("relation") @Parameter(description = "대상과의 관계 (couple, friend, parent 등)", required = true) String relation,
@@ -128,10 +128,9 @@ public class GptController {
 
     List<String> reasonList = Arrays.asList(reasons.split("\n"));
 
-    List<Product> products = productService.searchByKeywords(keywords);
-    for (int i = 0; i < products.size() && i < reasonList.size(); i++) {
-      products.get(i).setReason(reasonList.get(i));
-    }
+    List<Product> products_No_reason = productService.searchByKeywords(keywords);
+    List<Object> products = new ArrayList<>(products_No_reason);
+    products.add(reasonList);
 
     return products;
   }

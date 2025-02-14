@@ -73,10 +73,4 @@ public class Product {
 	@Column(nullable = false)
 	private String keyword;
 
-	/**
-	 * 추천 근거 (GPT가 제공하는 추천 이유)
-	 */
-	@Column(length = 1000) // 추천 근거가 길어질 수 있으므로 적절한 길이 설정
-	private String reason;
-
 }
