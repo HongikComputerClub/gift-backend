@@ -39,20 +39,9 @@ public class GptController {
     this.productService = productService;
   }
 
-  // GPT 모델의 입력 토큰 제한 (예: 출력 토큰 고려 후 설정, 여기서는 예시로 11000)
+  // GPT 모델의 입력 토큰 제한 (예: 11000)
   private static final int GPT_INPUT_LIMIT = 11000;
 
-  /**
-   * 파일의 아랫부분부터 토큰을 누적하여, GPT 입력 제한 이하인 내용만 선택한 후,
-   * 해당 청크를 GPT API로 보내 키워드를 추출하고, 최종적으로 관련 상품과 Reasons를 반환합니다.
-   *
-   * @param file       업로드된 카카오톡 대화 파일 (.txt)
-   * @param targetName 대상 이름 (예: "여자친구")
-   * @param relation   대상과의 관계 (예: "couple", "friend", "parent")
-   * @param sex        대상 성별 ("male" 또는 "female")
-   * @param theme      선물 주제 (예: "birthday", "valentine")
-   * @return 상품 목록과 Reasons 리스트를 포함한 JSON 배열
-   */
   @Operation(
       summary = "카톡 대화 분석 후 선물 추천",
       description = "카카오톡 대화 파일을 분석하여 GPT API를 이용해 키워드를 추출하고, 이에 맞는 추천 상품을 반환합니다."
@@ -71,8 +60,7 @@ public class GptController {
       @RequestParam("sex") @Parameter(description = "대상 성별 (male 또는 female)", required = true) String sex,
       @RequestParam("theme") @Parameter(description = "선물 주제 (birthday, valentine 등)", required = true) String theme
   ) {
-
-    // 1. 파일 전처리 (아랫부분부터 토큰 누적)
+    // 1. 파일의 모든 줄 중 targetName이 포함된 줄을 수집
     List<String> allTargetLines = new ArrayList<>();
     int formatType = detectFormatType(file);
     try (BufferedReader reader = new BufferedReader(
@@ -88,6 +76,7 @@ public class GptController {
       log.error("파일 읽기 오류: ", e);
     }
 
+    // 2. 파일의 아랫부분부터 역순으로 토큰을 누적하여 GPT_INPUT_LIMIT 이하 내용 선택
     int currentTokenCount = 0;
     List<String> selectedLines = new ArrayList<>();
     for (int i = allTargetLines.size() - 1; i >= 0; i--) {
@@ -107,7 +96,7 @@ public class GptController {
     List<String> processedMessages = new ArrayList<>();
     processedMessages.add(finalChunk.toString());
 
-    // (옵션) 로컬 파일 저장 (필요시)
+    // (옵션) 로컬 파일에 저장
     try {
       File outputFile = new File(System.getProperty("user.home"), "processed_kakaochat.txt");
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile, false))) {
@@ -119,22 +108,51 @@ public class GptController {
       log.error("파일 저장 오류: ", e);
     }
 
-    // 2. GPT API 호출 및 응답 파싱
+    // 3. GPT API 호출: 전처리된 메시지(청크)로부터 키워드 및 근거 추출
     String gptResponse = generatePrompt(processedMessages, relation, sex, theme);
-    String[] responseLines = gptResponse.split("\n");
-    String categories = responseLines[0].replace("Categories: ", "").trim();
-    String reasons = responseLines.length > 1 ? gptResponse.substring(gptResponse.indexOf("\n") + 1).trim() : "";
 
-    List<String> keywords = Arrays.stream(categories.split(","))
+    // 4. GPT 응답 파싱
+    // 예상 응답 예시:
+    // "Categories: 향수, 무선이어폰, 목걸이\n- 향수: [첫번째 근거]\n- 향수: [마지막 근거]\n- 무선이어폰: [근거]\n- 목걸이: [근거]"
+    String[] responseParts = gptResponse.split("\n", 2);
+    String categoriesPart = responseParts[0].replace("Categories: ", "").trim();
+    String reasonsPart = responseParts.length > 1 ? responseParts[1].trim() : "";
+
+    List<String> keywords = Arrays.stream(categoriesPart.split(","))
         .map(String::trim)
         .filter(s -> !s.isEmpty())
         .collect(Collectors.toList());
-    List<String> reasonList = Arrays.asList(reasons.split("\n"));
 
-    // 3. 데이터베이스 검색
+    // 파싱: 각 reason 줄에서 키워드와 설명 추출하고, 같은 키워드는 마지막 설명으로 덮어씀.
+    Map<String, String> reasonMap = new HashMap<>();
+    String[] reasonLines = reasonsPart.split("\n");
+    for (String line : reasonLines) {
+      line = line.trim();
+      if (line.startsWith("- ")) {
+        int colonIdx = line.indexOf(":");
+        if (colonIdx != -1) {
+          String key = line.substring(2, colonIdx).trim();  // 예: "향수"
+          String value = line.substring(colonIdx + 1).trim();
+          reasonMap.put(key, value); // 마지막에 나온 설명이 덮어쓰기 됨
+        }
+      }
+    }
+
+    // 최종 reason 객체 리스트 생성: 각 키워드에 대해 reasonMap에서 설명 가져오기
+    List<Map<String, String>> reasonList = new ArrayList<>();
+    for (String keyword : keywords) {
+      if (reasonMap.containsKey(keyword)) {
+        Map<String, String> entry = new HashMap<>();
+        entry.put("keyword", keyword);
+        entry.put("reason", reasonMap.get(keyword));
+        reasonList.add(entry);
+      }
+    }
+
+    // 5. 데이터베이스에서 상품 검색 (키워드를 이용)
     List<Product> productsNoReason = productService.searchByKeywords(keywords);
 
-    // 4. 최종 응답 구성 (JSON 객체로)
+    // 6. 최종 응답 구성 (JSON 객체)
     Map<String, Object> result = new HashMap<>();
     result.put("product", productsNoReason);
     result.put("reason", reasonList);
@@ -207,15 +225,13 @@ public class GptController {
     try {
       ObjectMapper mapper = new ObjectMapper();
       GptResponseDTO response = restTemplate.postForObject(gptConfig.getApiUrl(), request, GptResponseDTO.class);
-
       if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {
         String content = response.getChoices().get(0).getMessage().getContent();
         log.debug("GPT 전체 응답: {}", content);
 
-        // "1."과 "2."를 기준으로 파싱 (응답 포맷이 아래와 같다고 가정)
-        // 예: "Categories: 향수, 무선이어폰, 목걸이\n- 향수: [...]\n- 무선이어폰: [...]\n- 목걸이: [...]"
+        // 응답 포맷: "1. [카테고리1,카테고리2,카테고리3]\n2.\n(이후 Reasons 내용)"
         if (content.contains("1.") && content.contains("2.")) {
-          String[] parts = content.split("2\\.");
+          String[] parts = content.split("2\\.", 2);
           String part1 = parts[0].trim();
           String reasonsPart = parts[1].trim();
 
