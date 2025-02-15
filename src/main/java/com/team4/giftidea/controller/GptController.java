@@ -64,14 +64,15 @@ public class GptController {
       @ApiResponse(responseCode = "500", description = "서버 내부 오류 발생")
   })
   @PostMapping(value = "/process", consumes = "multipart/form-data", produces = "application/json")
-  public List<Object> processFileAndRecommend(
+  public Map<String, Object> processFileAndRecommend(
       @RequestParam("file") @Parameter(description = "카카오톡 대화 파일 (.txt)", required = true) MultipartFile file,
       @RequestParam("targetName") @Parameter(description = "분석 대상 이름 (예: '여자친구')", required = true) String targetName,
       @RequestParam("relation") @Parameter(description = "대상과의 관계 (couple, friend, parent 등)", required = true) String relation,
       @RequestParam("sex") @Parameter(description = "대상 성별 (male 또는 female)", required = true) String sex,
-      @RequestParam("theme") @Parameter(description = "선물 주제 (birthday, valentine 등)", required = true) String theme) {
+      @RequestParam("theme") @Parameter(description = "선물 주제 (birthday, valentine 등)", required = true) String theme
+  ) {
 
-    // 1. 파일의 모든 줄 중, targetName이 포함된 줄만 필터링
+    // 1. 파일 전처리 (아랫부분부터 토큰 누적)
     List<String> allTargetLines = new ArrayList<>();
     int formatType = detectFormatType(file);
     try (BufferedReader reader = new BufferedReader(
@@ -87,7 +88,6 @@ public class GptController {
       log.error("파일 읽기 오류: ", e);
     }
 
-    // 2. 파일의 아랫부분부터 토큰을 역순으로 누적하여 GPT_INPUT_LIMIT 이하인 내용만 선택
     int currentTokenCount = 0;
     List<String> selectedLines = new ArrayList<>();
     for (int i = allTargetLines.size() - 1; i >= 0; i--) {
@@ -99,7 +99,6 @@ public class GptController {
       selectedLines.add(currentLine);
       currentTokenCount += tokenCount;
     }
-    // 원래 순서대로 복원
     Collections.reverse(selectedLines);
     StringBuilder finalChunk = new StringBuilder();
     for (String s : selectedLines) {
@@ -108,7 +107,7 @@ public class GptController {
     List<String> processedMessages = new ArrayList<>();
     processedMessages.add(finalChunk.toString());
 
-    // (선택 사항) - 로컬에 저장 (여기서는 임시 파일로 저장 후 삭제하지 않음)
+    // (옵션) 로컬 파일 저장 (필요시)
     try {
       File outputFile = new File(System.getProperty("user.home"), "processed_kakaochat.txt");
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile, false))) {
@@ -120,12 +119,8 @@ public class GptController {
       log.error("파일 저장 오류: ", e);
     }
 
-    // 3. GPT API 호출: 전처리된 메시지(청크)를 기반으로 키워드 및 근거 추출
+    // 2. GPT API 호출 및 응답 파싱
     String gptResponse = generatePrompt(processedMessages, relation, sex, theme);
-
-    // 4. GPT 응답 파싱
-    // 예를 들어, GPT 응답이 아래와 같은 형식이라 가정:
-    // "Categories: 향수, 무선이어폰, 목걸이\n- 향수: [근거 내용...]\n- 무선이어폰: [근거 내용...]\n- 목걸이: [근거 내용...]"
     String[] responseLines = gptResponse.split("\n");
     String categories = responseLines[0].replace("Categories: ", "").trim();
     String reasons = responseLines.length > 1 ? gptResponse.substring(gptResponse.indexOf("\n") + 1).trim() : "";
@@ -136,12 +131,14 @@ public class GptController {
         .collect(Collectors.toList());
     List<String> reasonList = Arrays.asList(reasons.split("\n"));
 
-    // 5. 데이터베이스에서 검색 (키워드를 기반으로 상품 조회)
-    List<Product> products_No_reason = productService.searchByKeywords(keywords);
-    List<Object> finalResponse = new ArrayList<>(products_No_reason);
-    finalResponse.add(reasonList);
+    // 3. 데이터베이스 검색
+    List<Product> productsNoReason = productService.searchByKeywords(keywords);
 
-    return finalResponse;
+    // 4. 최종 응답 구성 (JSON 객체로)
+    Map<String, Object> result = new HashMap<>();
+    result.put("product", productsNoReason);
+    result.put("reason", reasonList);
+    return result;
   }
 
   private int detectFormatType(MultipartFile file) {
