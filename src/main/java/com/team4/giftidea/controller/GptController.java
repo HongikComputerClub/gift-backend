@@ -64,7 +64,7 @@ public class GptController {
       @ApiResponse(responseCode = "500", description = "서버 내부 오류 발생")
   })
   @PostMapping(value = "/process", consumes = "multipart/form-data", produces = "application/json")
-  public List<Product> processFileAndRecommend(
+  public List<Object> processFileAndRecommend(
       @RequestParam("file") @Parameter(description = "카카오톡 대화 파일 (.txt)", required = true) MultipartFile file,
       @RequestParam("targetName") @Parameter(description = "분석 대상 이름 (예: '여자친구')", required = true) String targetName,
       @RequestParam("relation") @Parameter(description = "대상과의 관계 (couple, friend, parent 등)", required = true) String relation,
@@ -116,13 +116,21 @@ public class GptController {
     processedMessages.add(finalChunk.toString());
 
     // 2. GPT API 호출: 전처리된 메시지로 키워드 반환
-    String categories = generatePrompt(processedMessages, relation, sex, theme);
+    String gptResponse = generatePrompt(processedMessages, relation, sex, theme);
 
-    // 3. 키워드 리스트 변환 및 상품 검색
-    List<String> keywords = Arrays.asList(categories.split(","));
+    // 3. 키워드, 근거 리스트 변환 및 상품 검색
+    String[] responseLines = gptResponse.split("\n");
+    String categories = responseLines[0].replace("Categories: ", "").trim();
+    String reasons = responseLines.length > 1 ? responseLines[1].trim() : "";
+
+    List<String> keywords = Arrays.asList(categories.split(", "));
     keywords.replaceAll(String::trim);
 
-    List<Product> products = productService.searchByKeywords(keywords);
+    List<String> reasonList = Arrays.asList(reasons.split("\n"));
+
+    List<Product> products_No_reason = productService.searchByKeywords(keywords);
+    List<Object> products = new ArrayList<>(products_No_reason);
+    products.add(reasonList);
 
     return products;
   }
@@ -193,7 +201,6 @@ public class GptController {
   private String generateText(String prompt) {
     GptRequestDTO request = new GptRequestDTO(gptConfig.getModel(), prompt);
     try {
-
       // HTTP 요청 전에 request 객체 로깅
       ObjectMapper mapper = new ObjectMapper();
 
@@ -203,21 +210,39 @@ public class GptController {
       if (response != null) {
         log.debug("GPT 응답 수신: {}", mapper.writeValueAsString(response));
 
-        // 응답에 'choices'가 있고, 그 중 첫 번째 항목이 존재하는지 확인
         if (response.getChoices() != null && !response.getChoices().isEmpty()) {
           String content = response.getChoices().get(0).getMessage().getContent();
 
-          // 필요한 형태로 카테고리 추출 (예: "1. [무선이어폰, 스마트워치, 향수]" 형태)
           if (content.contains("1.")) {
-            String categories = content.split("1.")[1].split("\n")[0]; // 첫 번째 카테고리 라인 추출
+            // 첫 번째 줄: 카테고리 리스트 추출
+            String categories = content.split("1.")[1].split("\n")[0];
 
-            // 괄호 안의 항목들을 추출하고, 쉼표로 구분하여 키워드 리스트 만들기
+            // 카테고리 리스트 (괄호 안의 항목들)
             String[] categoryArray = categories.split("\\[|\\]")[1].split(",");
+
             List<String> keywords = new ArrayList<>();
             for (String category : categoryArray) {
               keywords.add(category.trim());
             }
-            return String.join(", ", keywords); // 최종적으로 카테고리들을 반환
+
+            // 두 번째 줄 이후: 카테고리별 설명(reason) 추출
+            List<String> reasons = new ArrayList<>();
+            String[] lines = content.split("\n");
+
+            for (String line : lines) {
+              line = line.trim();
+              if (line.startsWith("- ")) { // 설명 부분인지 확인
+                int startIndex = line.indexOf(": [");
+                if (startIndex != -1) {
+                  String reason = line.substring(startIndex + 3, line.length() - 1).trim();
+                  reasons.add(reason);
+                }
+              }
+            }
+
+            // 카테고리와 설명을 조합하여 반환
+            return "Categories: " + String.join(", ", keywords) + "\n" +
+                    "Reasons: " + String.join("\n", reasons);
           } else {
             log.warn("GPT 응답에서 카테고리 정보가 올바르지 않습니다.");
           }
@@ -236,6 +261,7 @@ public class GptController {
       return "GPT 요청 오류";
     }
   }
+
 
   private String extractKeywordsAndReasonsCoupleMan(String theme, String message) {
     String prompt = String.format("""
