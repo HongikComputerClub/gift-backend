@@ -36,3 +36,10 @@ openai:
   api:
     key: ${OPENAI_API_KEY}
     url: "https://api.openai.com/v1/chat/completions"
+
+coupang:
+  api:
+    base-url: https://api-gateway.coupang.com
+    access-key: "mock"
+    secret-key: "mock"
+    partner-id: "mock"

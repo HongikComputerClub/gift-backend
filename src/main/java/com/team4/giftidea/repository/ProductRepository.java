@@ -27,4 +27,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	 * @return 상품 엔티티 (없으면 Optional.empty())
 	 */
 	Optional<Product> findByProductId(String productId);
+
+	List<Product> findByMallName(String mallName);
 }
