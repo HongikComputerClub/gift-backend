@@ -40,7 +40,7 @@ public class CoupangPartnersService {
 	}
 
 	/**
-	 * DB에서 모든 쿠팡 상품을 조회하고, 파트너스 링크로 업데이트 (배치+대기 적용)
+	 * 배치 & 상품 단위로 대기 시간을 두어 과도 호출을 피하는 방식
 	 */
 	@Transactional
 	public int updateAllCoupangProductLinks() {
@@ -49,19 +49,21 @@ public class CoupangPartnersService {
 		List<Product> coupangProducts = productRepository.findByMallName("Coupang");
 		log.info("📦 총 {}개의 쿠팡 상품을 찾음", coupangProducts.size());
 
-		// 한 번에 처리할 상품 수 (필요에 따라 조정)
+		// 한 번에 처리할 상품 수
 		final int BATCH_SIZE = 50;
-		// 각 배치 처리 후 대기 시간 (밀리초) (필요에 따라 조정)
-		final long SLEEP_MS = 60000L;
+		// 각 상품 처리 후 대기 (ms) - 1초
+		final long ITEM_SLEEP_MS = 1000L;
+		// 배치 완료 후 대기 (ms) - 10초 (상황에 따라 늘리거나 줄일 수 있음)
+		final long BATCH_SLEEP_MS = 10000L;
 
 		int updatedCount = 0;
 
-		// 배치(Chunk) 단위로 상품을 나눠 처리
 		for (int i = 0; i < coupangProducts.size(); i += BATCH_SIZE) {
 			List<Product> batch = coupangProducts.subList(i, Math.min(i + BATCH_SIZE, coupangProducts.size()));
 			log.info("🔸 Batch 처리: index {} ~ {} (총 {}개)", i, i + batch.size() - 1, batch.size());
 
-			for (Product product : batch) {
+			for (int j = 0; j < batch.size(); j++) {
+				Product product = batch.get(j);
 				String originalUrl = product.getLink();
 				log.info("🔗 상품 ID {}의 기존 URL: {}", product.getProductId(), originalUrl);
 
@@ -74,16 +76,26 @@ public class CoupangPartnersService {
 				} else {
 					log.warn("⚠️ 파트너스 링크 생성 실패 (상품 ID: {})", product.getProductId());
 				}
+
+				// [중요] 상품 1건 처리 후 1초 대기 -> 1분 최대 60건
+				if (j < batch.size() - 1) {
+					try {
+						Thread.sleep(ITEM_SLEEP_MS);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						log.warn("상품 단위 대기 중 인터럽트 발생: {}", e.getMessage());
+					}
+				}
 			}
 
-			// 한 배치를 끝냈으므로 일정 시간 대기 (과도 호출 방지)
+			// 배치가 끝났다면 추가로 10초 대기
 			if (i + BATCH_SIZE < coupangProducts.size()) {
-				log.info("🔸 Batch 처리 완료: {}개 상품 업데이트, 다음 배치 전 {}ms 대기", batch.size(), SLEEP_MS);
+				log.info("🔸 Batch 처리 완료: {}개 상품 업데이트, 다음 배치 전 {}ms 대기", batch.size(), BATCH_SLEEP_MS);
 				try {
-					Thread.sleep(SLEEP_MS);
+					Thread.sleep(BATCH_SLEEP_MS);
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
-					log.warn("스레드 대기 중 인터럽트 발생: {}", e.getMessage());
+					log.warn("배치 단위 대기 중 인터럽트 발생: {}", e.getMessage());
 				}
 			}
 		}
@@ -151,12 +163,6 @@ public class CoupangPartnersService {
 
 	/**
 	 * HMAC 서명 기반의 Authorization 헤더 생성
-	 *
-	 * 메시지 형식: signedDate + method + path + query
-	 * signedDate 포맷: "yyMMdd'T'HHmmss'Z'" (GMT 기준)
-	 *
-	 * 최종 형식:
-	 * "CEA algorithm=HmacSHA256, access-key=ACCESS_KEY, signed-date=SIGNED_DATE, signature=SIGNATURE"
 	 */
 	private String generateAuthorizationHeader(String method, String uri) {
 		SimpleDateFormat dateFormatGmt = new SimpleDateFormat("yyMMdd'T'HHmmss'Z'");
