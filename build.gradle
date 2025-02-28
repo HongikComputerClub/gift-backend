@@ -24,32 +24,41 @@ repositories {
 }
 
 dependencies {
-	// Spring Boot Starters
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	// ✅ Spring Boot 기본 스타터 패키지
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-logging'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
-	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux' // ✅ WebClient 추가
 
-	// Selenium for web scraping
-	implementation 'org.seleniumhq.selenium:selenium-java:4.26.0'
-
-	// OpenAPI documentation
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
-
-	// MySQL Driver
+	// ✅ 데이터베이스 관련
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'com.mysql:mysql-connector-j'
 
-	// Lombok for reducing boilerplate code
+	// ✅ 보안 관련
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'io.jsonwebtoken:jjwt:0.12.3' // ✅ JWT 토큰 생성을 위한 라이브러리
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+	// ✅ Selenium 웹 스크래핑
+	implementation 'org.seleniumhq.selenium:selenium-java:4.26.0'
+
+	// ✅ OpenAPI 문서 자동화 (Swagger UI)
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+	// ✅ Lombok (코드 간소화)
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
-	implementation 'org.springframework.boot:spring-boot-starter-security'
+	// ✅ 로깅 및 JSON 처리
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-	// Testing
+	// ✅ 쿠팡 파트너스 API 관련
+	implementation 'org.apache.httpcomponents.client5:httpclient5' // HTTP 요청을 위한 라이브러리
+
+	// ✅ 테스트 관련
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 }
