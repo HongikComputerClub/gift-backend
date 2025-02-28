@@ -221,7 +221,7 @@ public class GptController {
   }
 
   private String generateText(String prompt) {
-    GptRequestDTO request = new GptRequestDTO(gptConfig.getModel(), prompt, 110);
+    GptRequestDTO request = new GptRequestDTO(gptConfig.getModel(), prompt, 200);
     try {
       ObjectMapper mapper = new ObjectMapper();
       GptResponseDTO response = restTemplate.postForObject(gptConfig.getApiUrl(), request, GptResponseDTO.class);
