@@ -3,30 +3,26 @@ package com.team4.giftidea.controller;
 import com.team4.giftidea.entity.Product;
 import com.team4.giftidea.service.CoupangApiService;
 import com.team4.giftidea.service.KreamApiService;
-import com.team4.giftidea.service.NaverApiService;
 import com.team4.giftidea.service.ProductService;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Slf4j  // 로깅 추가
+@Slf4j
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/ products")
 public class ProductController {
-
-	private final NaverApiService naverApiService;
 	private final CoupangApiService coupangApiService;
 	private final ProductService productService;
 	private final KreamApiService kreamApiService;
 
 	public ProductController(
-		NaverApiService naverApiService,
 		CoupangApiService coupangApiService,
 		KreamApiService kreamApiService,
 		ProductService productService) {
-		this.naverApiService = naverApiService;
 		this.coupangApiService = coupangApiService;
 		this.kreamApiService = kreamApiService;
 		this.productService = productService;
@@ -39,17 +35,12 @@ public class ProductController {
 	public void crawlAndStoreData() {
 		log.info("🔍 크롤링 시작...");
 
-		// 네이버 키워드 목록
-		List<String> naverKeywords = List.of(
-			"현금 박스", "아버지 신발", "어머니 신발", "건강식품", "헬스가방", "핸드크림", "디퓨저",
-			"오설록 티세트", "휴지", "초콜릿", "수제 초콜릿 키트", "파자마세트", "남자 화장품", "에어랩",
-			"무드등", "수건", "전기포트", "에어프라이기", "비타민", "입욕제", "블루투스 스피커", "와인"
-		);
-
 		// 쿠팡 키워드 목록
 		List<String> coupangKeywords = List.of(
 			"안마기기", "무선이어폰", "스마트워치", "등산용품", "스마트폰", "맨투맨", "마우스",
-			"키보드", "게임기", "전기면도기"
+			"키보드", "게임기", "전기면도기", "현금 박스", "아버지 신발", "어머니 신발", "건강식품", "헬스가방", "핸드크림", "디퓨저",
+			"오설록 티세트", "휴지", "초콜릿", "수제 초콜릿 키트", "파자마세트", "남자 화장품", "에어랩",
+			"무드등", "수건", "전기포트", "에어프라이기", "비타민", "입욕제", "블루투스 스피커", "와인"
 		);
 
 		// Kream 키워드 목록
@@ -60,18 +51,6 @@ public class ProductController {
 		);
 
 		log.info("📢 네이버 크롤링 시작...");
-		naverKeywords.forEach(keyword -> {
-			log.debug("🔎 네이버 검색 키워드: {}", keyword);
-			List<Product> naverProducts = naverApiService.searchItems(List.of(keyword));
-			log.info("✅ 네이버 크롤링 완료 (키워드: {}, 검색 결과: {} 개)", keyword, naverProducts.size());
-
-			if (!naverProducts.isEmpty()) {
-				productService.saveItems(naverProducts, keyword);
-				log.info("✅ 네이버 상품 저장 완료 (키워드: {}, 저장된 개수: {})", keyword, naverProducts.size());
-			} else {
-				log.warn("⚠️ 네이버 크롤링 실패 또는 검색 결과 없음 (키워드: {})", keyword);
-			}
-		});
 
 		log.info("📢 쿠팡 크롤링 시작...");
 		coupangKeywords.forEach(keyword -> {
@@ -102,5 +81,12 @@ public class ProductController {
 		});
 
 		log.info("🎯 크롤링 및 저장 작업 완료!");
+	}
+
+	@Scheduled(cron = "0 5 1 * * *")
+	public void autoCrawlAndStoreData() {
+		log.info("🕐 자동 크롤링 시작 (새벽 1시)...");
+		crawlAndStoreData();
+		log.info("✅ 자동 크롤링 완료!");
 	}
 }

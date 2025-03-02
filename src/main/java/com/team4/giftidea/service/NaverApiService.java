@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 네이버 쇼핑 API를 호출하여 상품 정보를 가져오는 서비스 클래스
+ * 네이버 쇼핑 API를 호출하여 상품 정보를 가져오는 서비스 클래스(더 이상 사용하지 않음)
  */
 @Service
 @Slf4j
