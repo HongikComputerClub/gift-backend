@@ -268,7 +268,7 @@ public class GptController {
 
   private String extractKeywordsAndReasonsCoupleMan(String theme, String message) {
     String prompt = String.format("""
-            다음 텍스트를 참고하여 남자 애인이 %s에 선물로 받으면 좋아할 카테고리 3개와 판단에 참고한 대화를 200토큰 내로 제공해주세요.
+            다음 텍스트를 참고하여 남자 애인이 %s에 선물로 받으면 좋아할 카테고리 3개와 판단에 참고한 대화를 150토큰 내로 제공해주세요.
             카테고리: 남성 지갑, 남성 스니커즈, 백팩, 토트백, 크로스백, 벨트, 선글라스, 향수, 헬스가방, 무선이어폰, 스마트워치, 맨투맨, 마우스, 키보드, 전기면도기, 게임기
 
             텍스트: %s
