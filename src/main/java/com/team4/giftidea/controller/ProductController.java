@@ -13,7 +13,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/ products")
+@RequestMapping("/api/products")
 public class ProductController {
 	private final CoupangApiService coupangApiService;
 	private final ProductService productService;
@@ -81,12 +81,5 @@ public class ProductController {
 		});
 
 		log.info("🎯 크롤링 및 저장 작업 완료!");
-	}
-
-	@Scheduled(cron = "0 5 1 * * *")
-	public void autoCrawlAndStoreData() {
-		log.info("🕐 자동 크롤링 시작 (새벽 1시)...");
-		crawlAndStoreData();
-		log.info("✅ 자동 크롤링 완료!");
 	}
 }
