@@ -16,6 +16,10 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+/**
+ * 쿠팡 파트너스 API 호출 시 "1분당 100회" 제한을 초과하지 않도록
+ * 롤링 윈도우 방식의 Rate Limiter를 적용한 서비스
+ */
 @Slf4j
 @Service
 public class CoupangPartnersService {
@@ -35,12 +39,24 @@ public class CoupangPartnersService {
 	@Value("${coupang.api.partner-id}")
 	private String partnerId;
 
+	/**
+	 * 최근 API 호출 시점을 저장하는 큐 (밀리초 단위)
+	 * - 맨 앞: 가장 오래된 호출 시점
+	 * - 맨 뒤: 가장 최신 호출 시점
+	 */
+	private final Deque<Long> callTimestamps = new LinkedList<>();
+
+	/**
+	 * 동시성 제어를 위한 lock 객체
+	 */
+	private final Object lock = new Object();
+
 	public CoupangPartnersService(ProductRepository productRepository) {
 		this.productRepository = productRepository;
 	}
 
 	/**
-	 * 배치 & 상품 단위로 대기 시간을 두어 과도 호출을 피하는 방식
+	 * DB에서 모든 쿠팡 상품을 조회하고, 파트너스 링크로 업데이트
 	 */
 	@Transactional
 	public int updateAllCoupangProductLinks() {
@@ -49,54 +65,20 @@ public class CoupangPartnersService {
 		List<Product> coupangProducts = productRepository.findByMallName("Coupang");
 		log.info("📦 총 {}개의 쿠팡 상품을 찾음", coupangProducts.size());
 
-		// 한 번에 처리할 상품 수
-		final int BATCH_SIZE = 50;
-		// 각 상품 처리 후 대기 (ms) - 1초
-		final long ITEM_SLEEP_MS = 1000L;
-		// 배치 완료 후 대기 (ms) - 10초 (상황에 따라 늘리거나 줄일 수 있음)
-		final long BATCH_SLEEP_MS = 10000L;
-
 		int updatedCount = 0;
+		for (Product product : coupangProducts) {
+			String originalUrl = product.getLink();
+			log.info("🔗 상품 ID {}의 기존 URL: {}", product.getProductId(), originalUrl);
 
-		for (int i = 0; i < coupangProducts.size(); i += BATCH_SIZE) {
-			List<Product> batch = coupangProducts.subList(i, Math.min(i + BATCH_SIZE, coupangProducts.size()));
-			log.info("🔸 Batch 처리: index {} ~ {} (총 {}개)", i, i + batch.size() - 1, batch.size());
-
-			for (int j = 0; j < batch.size(); j++) {
-				Product product = batch.get(j);
-				String originalUrl = product.getLink();
-				log.info("🔗 상품 ID {}의 기존 URL: {}", product.getProductId(), originalUrl);
-
-				String partnerLink = generatePartnerLink(originalUrl);
-				if (partnerLink != null) {
-					log.info("✅ 상품 ID {}의 변환된 파트너스 링크: {}", product.getProductId(), partnerLink);
-					product.setLink(partnerLink);
-					productRepository.save(product);
-					updatedCount++;
-				} else {
-					log.warn("⚠️ 파트너스 링크 생성 실패 (상품 ID: {})", product.getProductId());
-				}
-
-				// [중요] 상품 1건 처리 후 1초 대기 -> 1분 최대 60건
-				if (j < batch.size() - 1) {
-					try {
-						Thread.sleep(ITEM_SLEEP_MS);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						log.warn("상품 단위 대기 중 인터럽트 발생: {}", e.getMessage());
-					}
-				}
-			}
-
-			// 배치가 끝났다면 추가로 10초 대기
-			if (i + BATCH_SIZE < coupangProducts.size()) {
-				log.info("🔸 Batch 처리 완료: {}개 상품 업데이트, 다음 배치 전 {}ms 대기", batch.size(), BATCH_SLEEP_MS);
-				try {
-					Thread.sleep(BATCH_SLEEP_MS);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					log.warn("배치 단위 대기 중 인터럽트 발생: {}", e.getMessage());
-				}
+			// 파트너스 링크 변환
+			String partnerLink = generatePartnerLink(originalUrl);
+			if (partnerLink != null) {
+				log.info("✅ 상품 ID {}의 변환된 파트너스 링크: {}", product.getProductId(), partnerLink);
+				product.setLink(partnerLink);
+				productRepository.save(product);
+				updatedCount++;
+			} else {
+				log.warn("⚠️ 파트너스 링크 생성 실패 (상품 ID: {})", product.getProductId());
 			}
 		}
 
@@ -105,9 +87,13 @@ public class CoupangPartnersService {
 	}
 
 	/**
-	 * 기존 쿠팡 상품 URL을 파트너스 트래킹 URL로 변환하기 위한 API 호출
+	 * 기존 쿠팡 상품 URL을 파트너스 트래킹 URL로 변환하는 API 호출
+	 * → "1분당 100회" 제한을 넘지 않도록 Rate Limiter 적용
 	 */
 	private String generatePartnerLink(String originalUrl) {
+		// API 호출 전에 Rate Limiter 체크
+		waitIfLimitReached();
+
 		try {
 			String endpoint = "/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink";
 			String apiUrl = baseUrl + endpoint;
@@ -130,12 +116,14 @@ public class CoupangPartnersService {
 			log.info("🔍 요청 바디: {}", requestBody);
 			log.debug("🔍 요청 헤더: {}", headers);
 
+			// API 호출
 			long startTime = System.currentTimeMillis();
 			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 			ResponseEntity<Map> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, Map.class);
 			long duration = System.currentTimeMillis() - startTime;
 			log.info("⏱️ API 호출 소요 시간: {}ms", duration);
 
+			// API 응답 처리
 			log.info("🔍 API 응답 상태 코드: {}", response.getStatusCode());
 			log.debug("🔍 API 응답 헤더: {}", response.getHeaders());
 			log.info("📦 API 응답 바디: {}", response.getBody());
@@ -159,6 +147,45 @@ public class CoupangPartnersService {
 			log.error("❌ 쿠팡 파트너스 링크 생성 중 오류 발생: {}", e.getMessage(), e);
 		}
 		return null;
+	}
+
+	/**
+	 * "1분(60초) 내 100회" 제한을 지키기 위한 Rate Limiter
+	 */
+	private void waitIfLimitReached() {
+		synchronized (lock) {
+			long now = System.currentTimeMillis();
+
+			// 60초가 지난 기록은 큐에서 제거
+			while (!callTimestamps.isEmpty() && now - callTimestamps.peekFirst() >= 60000) {
+				callTimestamps.removeFirst();
+			}
+
+			// 이미 100회가 차 있다면, 가장 오래된 호출과의 시간 차만큼 대기
+			if (callTimestamps.size() >= 100) {
+				long earliestCall = callTimestamps.peekFirst();  // 가장 오래된 호출 시점
+				long waitTime = 60000 - (now - earliestCall);    // 60초 - (현재시간 - 가장 오래된 호출시각)
+				if (waitTime > 0) {
+					log.info("🚦 1분 100회 초과 감지 → {}ms 대기 시작", waitTime);
+					try {
+						Thread.sleep(waitTime);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						log.warn("Rate Limiter 대기 중 인터럽트 발생: {}", e.getMessage());
+					}
+					log.info("✅ 대기 종료, 다시 호출 진행");
+				}
+
+				// 대기 후 다시 now 갱신, 60초 지난 기록 제거
+				now = System.currentTimeMillis();
+				while (!callTimestamps.isEmpty() && now - callTimestamps.peekFirst() >= 60000) {
+					callTimestamps.removeFirst();
+				}
+			}
+
+			// 현재 호출 시점을 큐에 추가
+			callTimestamps.addLast(System.currentTimeMillis());
+		}
 	}
 
 	/**
@@ -189,6 +216,6 @@ public class CoupangPartnersService {
 		}
 
 		return String.format("CEA algorithm=%s, access-key=%s, signed-date=%s, signature=%s",
-			"HmacSHA256", accessKey, signedDate, signature);
+				"HmacSHA256", accessKey, signedDate, signature);
 	}
 }
